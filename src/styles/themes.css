@@ -1,0 +1,221 @@
+/* ===================== FreedomMusic Theme System =====================
+ * 5 款主题：Midnight / Aurora / Obsidian / Rose / Forest
+ * 通过给 <html> 设置 data-theme 属性切换，所有变量自动覆盖。
+ * ================================================================= */
+
+/* ── 默认主题：Midnight（深蓝紫） ── */
+html {
+  --theme-bg-from: #0f172a;
+  --theme-bg-via: #1e1b4b;
+  --theme-bg-to: #0f172a;
+  --theme-accent: #22d3ee;
+  --theme-accent-rgb: 34, 211, 238;
+  --theme-glass-tint: 255, 255, 255;
+
+  --cg-border: rgba(255, 255, 255, 0.25);
+  --cg-border-hover: rgba(255, 255, 255, 0.4);
+  --cg-bg-base: rgba(255, 255, 255, 0.03);
+  --cg-bg-card: rgba(255, 255, 255, 0.04);
+  --cg-bg-card-hover: rgba(255, 255, 255, 0.06);
+  --cg-glow-inner: rgba(255, 255, 255, 0.08);
+  --cg-glow-inner-hover: rgba(255, 255, 255, 0.12);
+  --cg-shadow-outer: rgba(0, 0, 0, 0.25);
+  --cg-shadow-outer-hover: rgba(0, 0, 0, 0.3);
+  --cg-highlight: rgba(255, 255, 255, 0.12);
+  --cg-highlight-subtle: rgba(255, 255, 255, 0.04);
+  --cg-radius-xl: 48px;
+  --cg-radius-lg: 28px;
+  --cg-transition: 0.3s ease;
+}
+
+/* ── 主题：Aurora（极光青） ── */
+html[data-theme="aurora"] {
+  --theme-bg-from: #0a1628;
+  --theme-bg-via: #0d2832;
+  --theme-bg-to: #0a1628;
+  --theme-accent: #22d3ee;
+  --theme-accent-rgb: 34, 211, 238;
+  --theme-glass-tint: 165, 243, 252;
+
+  --cg-border: rgba(165, 243, 252, 0.3);
+  --cg-border-hover: rgba(165, 243, 252, 0.5);
+  --cg-bg-base: rgba(165, 243, 252, 0.04);
+  --cg-bg-card: rgba(165, 243, 252, 0.06);
+  --cg-bg-card-hover: rgba(165, 243, 252, 0.1);
+  --cg-glow-inner: rgba(165, 243, 252, 0.12);
+  --cg-glow-inner-hover: rgba(165, 243, 252, 0.18);
+  --cg-shadow-outer: rgba(0, 0, 0, 0.15);
+  --cg-shadow-outer-hover: rgba(0, 0, 0, 0.22);
+  --cg-highlight: rgba(165, 243, 252, 0.15);
+  --cg-highlight-subtle: rgba(165, 243, 252, 0.05);
+}
+
+/* ── 主题：Obsidian（黑曜石·橙） ── */
+html[data-theme="obsidian"] {
+  --theme-bg-from: #0a0a0a;
+  --theme-bg-via: #111111;
+  --theme-bg-to: #0a0a0a;
+  --theme-accent: #fb923c;
+  --theme-accent-rgb: 251, 146, 60;
+  --theme-glass-tint: 251, 146, 60;
+
+  --cg-border: rgba(251, 146, 60, 0.25);
+  --cg-border-hover: rgba(251, 146, 60, 0.45);
+  --cg-bg-base: rgba(255, 255, 255, 0.02);
+  --cg-bg-card: rgba(255, 255, 255, 0.03);
+  --cg-bg-card-hover: rgba(255, 255, 255, 0.05);
+  --cg-glow-inner: rgba(251, 146, 60, 0.08);
+  --cg-glow-inner-hover: rgba(251, 146, 60, 0.14);
+  --cg-shadow-outer: rgba(0, 0, 0, 0.35);
+  --cg-shadow-outer-hover: rgba(0, 0, 0, 0.45);
+  --cg-highlight: rgba(255, 255, 255, 0.08);
+  --cg-highlight-subtle: rgba(255, 255, 255, 0.02);
+}
+
+/* ── 主题：Rose（玫瑰粉） ── */
+html[data-theme="rose"] {
+  --theme-bg-from: #1a0a1a;
+  --theme-bg-via: #2a1520;
+  --theme-bg-to: #1a0a1a;
+  --theme-accent: #f472b6;
+  --theme-accent-rgb: 244, 114, 182;
+  --theme-glass-tint: 244, 114, 182;
+
+  --cg-border: rgba(244, 114, 182, 0.25);
+  --cg-border-hover: rgba(244, 114, 182, 0.45);
+  --cg-bg-base: rgba(244, 114, 182, 0.04);
+  --cg-bg-card: rgba(244, 114, 182, 0.06);
+  --cg-bg-card-hover: rgba(244, 114, 182, 0.1);
+  --cg-glow-inner: rgba(244, 114, 182, 0.1);
+  --cg-glow-inner-hover: rgba(244, 114, 182, 0.16);
+  --cg-shadow-outer: rgba(0, 0, 0, 0.2);
+  --cg-shadow-outer-hover: rgba(0, 0, 0, 0.28);
+  --cg-highlight: rgba(244, 114, 182, 0.12);
+  --cg-highlight-subtle: rgba(244, 114, 182, 0.04);
+}
+
+/* ── 主题：Forest（森林绿） ── */
+html[data-theme="forest"] {
+  --theme-bg-from: #0a1a0a;
+  --theme-bg-via: #0f2418;
+  --theme-bg-to: #0a1a0a;
+  --theme-accent: #4ade80;
+  --theme-accent-rgb: 74, 222, 128;
+  --theme-glass-tint: 74, 222, 128;
+
+  --cg-border: rgba(74, 222, 128, 0.25);
+  --cg-border-hover: rgba(74, 222, 128, 0.45);
+  --cg-bg-base: rgba(74, 222, 128, 0.03);
+  --cg-bg-card: rgba(74, 222, 128, 0.05);
+  --cg-bg-card-hover: rgba(74, 222, 128, 0.08);
+  --cg-glow-inner: rgba(74, 222, 128, 0.08);
+  --cg-glow-inner-hover: rgba(74, 222, 128, 0.14);
+  --cg-shadow-outer: rgba(0, 0, 0, 0.25);
+  --cg-shadow-outer-hover: rgba(0, 0, 0, 0.32);
+  --cg-highlight: rgba(74, 222, 128, 0.1);
+  --cg-highlight-subtle: rgba(74, 222, 128, 0.03);
+}
+
+/* ── 心情主题：Happy（天蓝晴空） ── */
+html[data-theme="mood-happy"] {
+  --theme-bg-from: #0c1e30;
+  --theme-bg-via: #143a55;
+  --theme-bg-to: #0c1e30;
+  --theme-accent: #7dd3fc;
+  --theme-accent-rgb: 125, 211, 252;
+  --theme-glass-tint: 125, 211, 252;
+
+  --cg-border: rgba(125, 211, 252, 0.3);
+  --cg-border-hover: rgba(125, 211, 252, 0.5);
+  --cg-bg-base: rgba(125, 211, 252, 0.04);
+  --cg-bg-card: rgba(125, 211, 252, 0.06);
+  --cg-bg-card-hover: rgba(125, 211, 252, 0.1);
+  --cg-glow-inner: rgba(125, 211, 252, 0.1);
+  --cg-glow-inner-hover: rgba(125, 211, 252, 0.16);
+  --cg-shadow-outer: rgba(0, 0, 0, 0.2);
+  --cg-shadow-outer-hover: rgba(0, 0, 0, 0.28);
+  --cg-highlight: rgba(125, 211, 252, 0.14);
+  --cg-highlight-subtle: rgba(125, 211, 252, 0.05);
+}
+
+/* ── 心情主题：Calm（薄荷绿） ── */
+html[data-theme="mood-calm"] {
+  --theme-bg-from: #061a12;
+  --theme-bg-via: #0a2818;
+  --theme-bg-to: #061a12;
+  --theme-accent: #34d399;
+  --theme-accent-rgb: 52, 211, 153;
+  --theme-glass-tint: 52, 211, 153;
+
+  --cg-border: rgba(52, 211, 153, 0.25);
+  --cg-border-hover: rgba(52, 211, 153, 0.45);
+  --cg-bg-base: rgba(52, 211, 153, 0.03);
+  --cg-bg-card: rgba(52, 211, 153, 0.05);
+  --cg-bg-card-hover: rgba(52, 211, 153, 0.08);
+  --cg-glow-inner: rgba(52, 211, 153, 0.08);
+  --cg-glow-inner-hover: rgba(52, 211, 153, 0.14);
+  --cg-shadow-outer: rgba(0, 0, 0, 0.25);
+  --cg-shadow-outer-hover: rgba(0, 0, 0, 0.32);
+  --cg-highlight: rgba(52, 211, 153, 0.12);
+  --cg-highlight-subtle: rgba(52, 211, 153, 0.04);
+}
+
+/* ── 心情主题：Sad（深夜蓝） ── */
+html[data-theme="mood-sad"] {
+  --theme-bg-from: #060a14;
+  --theme-bg-via: #0a1220;
+  --theme-bg-to: #060a14;
+  --theme-accent: #60a5fa;
+  --theme-accent-rgb: 96, 165, 250;
+  --theme-glass-tint: 96, 165, 250;
+
+  --cg-border: rgba(96, 165, 250, 0.25);
+  --cg-border-hover: rgba(96, 165, 250, 0.45);
+  --cg-bg-base: rgba(96, 165, 250, 0.03);
+  --cg-bg-card: rgba(96, 165, 250, 0.05);
+  --cg-bg-card-hover: rgba(96, 165, 250, 0.08);
+  --cg-glow-inner: rgba(96, 165, 250, 0.08);
+  --cg-glow-inner-hover: rgba(96, 165, 250, 0.14);
+  --cg-shadow-outer: rgba(0, 0, 0, 0.25);
+  --cg-shadow-outer-hover: rgba(0, 0, 0, 0.32);
+  --cg-highlight: rgba(96, 165, 250, 0.12);
+  --cg-highlight-subtle: rgba(96, 165, 250, 0.04);
+}
+
+/* ===================== 通用工具层 ===================== */
+
+/* 主背景渐变 */
+.app-theme-bg {
+  background: linear-gradient(to bottom right, var(--theme-bg-from), var(--theme-bg-via), var(--theme-bg-to));
+}
+
+/* 强调色工具类 */
+.text-theme-accent {
+  color: var(--theme-accent);
+}
+.bg-theme-accent {
+  background-color: var(--theme-accent);
+}
+.bg-theme-accent-10 {
+  background-color: rgba(var(--theme-accent-rgb), 0.1);
+}
+.bg-theme-accent-20 {
+  background-color: rgba(var(--theme-accent-rgb), 0.2);
+}
+.border-theme-accent {
+  border-color: var(--theme-accent);
+}
+.border-theme-accent-50 {
+  border-color: rgba(var(--theme-accent-rgb), 0.5);
+}
+.shadow-theme-accent {
+  box-shadow: 0 0 15px rgba(var(--theme-accent-rgb), 0.4);
+}
+.accent-theme-accent {
+  accent-color: var(--theme-accent);
+}
+
+/* 过渡动画：切换主题时平滑过渡 */
+html, .clear-glass, .clear-glass-card, .clear-glass-round, .clear-glass-sidebar, .app-theme-bg {
+  transition: background-color 0.4s ease, background-image 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease, color 0.4s ease;
+}
