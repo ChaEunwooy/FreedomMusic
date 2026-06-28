@@ -144,6 +144,23 @@ npm run build
 
 支持自定义主题颜色（背景渐变 + 强调色），通过CSS变量实现全局主题切换。
 
+<img width="2542" height="1216" alt="image" src="https://github.com/user-attachments/assets/5faaf44c-025a-47a8-b5a5-47f769079f47" />
+
+<img width="2536" height="1212" alt="image" src="https://github.com/user-attachments/assets/e15359a7-c3d3-4b43-a2e5-7f8bf990cbd2" />
+
+<img width="2533" height="1225" alt="image" src="https://github.com/user-attachments/assets/93e9c9cd-b817-461e-921e-6b0f06c4289a" />
+
+<img width="2558" height="1221" alt="image" src="https://github.com/user-attachments/assets/4d8ab4ae-1e5b-4edd-abf7-d7500065ae16" />
+
+<img width="2541" height="1211" alt="image" src="https://github.com/user-attachments/assets/a4124f97-95b1-46f7-84fb-609a4fb2b850" />
+
+<img width="2551" height="1237" alt="image" src="https://github.com/user-attachments/assets/e19108a1-6027-4024-8539-5e4f2937f5f1" />
+
+<img width="2540" height="1191" alt="image" src="https://github.com/user-attachments/assets/48d0bdeb-59de-46ae-9671-c3ed73838d0f" />
+
+<img width="2536" height="1197" alt="image" src="https://github.com/user-attachments/assets/339ae057-8738-486c-adf9-f4a6b0f2357f" />
+
+
 ## 许可证
 
 MIT License
