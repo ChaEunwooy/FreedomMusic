@@ -70,8 +70,8 @@ const NowPlaying: FC<NowPlayingProps> = ({ onOpenFullscreen }) => {
 
       <div className="shrink-0 pt-1" onClick={(e) => e.stopPropagation()}>
         <ProgressBar />
-        <PlayerControls  />
-        <VolumeControl />
+        <PlayerControls />
+        <VolumeControl className="w-full mt-1" />
       </div>
     </div>
   );

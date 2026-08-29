@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import type { Playlist, DailySong, Song, PlaylistSong } from './types';
-import { getRecommendPlaylists, getHotPlaylists, getPlaylistDetail, getDailyRecommend, getToplist, getPlaylistTrackAll } from '../services/api';
+import { getRecommendPlaylists, getHotPlaylists, getPlaylistDetail, getDailyRecommend } from '../services/api';
 import { useAuth } from './AuthContext';
 import { getDailyCache, setDailyCache } from '../utils/dailyCache';
 
@@ -81,7 +81,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      const items = list.map((item: Record<string, unknown>) => ({
+      const items: Playlist[] = list.map((item: Record<string, unknown>) => ({
         id: item.id as number,
         name: item.name as string,
         picUrl: (item.coverImgUrl || item.picUrl) as string,
@@ -90,10 +90,17 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         creator: item.creator as { nickname: string } | undefined,
       }));
 
-      setPlaylists(items.map((i: (typeof items)[number]) => ({ ...i, songs: undefined })));
+      // 立即展示，不等待详情
+      setPlaylists(items);
+      setLoading(false);
 
-      const full = await fetchPlaylistsWithSongs(items);
-      setPlaylists(full);
+      // 后台静默增强前 6 个歌单的歌曲预览
+      fetchPlaylistsWithSongs(items.slice(0, 6)).then((enhanced) => {
+        setPlaylists((prev) => {
+          const map = new Map(enhanced.map((e) => [e.id, e]));
+          return prev.map((p) => map.get(p.id) || p);
+        });
+      }).catch(() => {});
     } catch (err) {
       console.error('无法连接到网易云 API', err);
       setError('无法连接到网易云 API，请确认后端服务已启动');
@@ -108,25 +115,29 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
     (async () => {
       try {
+        // 1. 优先读取瞬间缓存 (0ms 秒开)
         const cached = await getDailyCache<Playlist[]>('recommend_playlists');
         if (controller.signal.aborted) return;
         if (cached?.length) {
           setPlaylists(cached);
           setLoading(false);
-          return;
+          // 异步静默校验更新
         }
 
-        setLoading(true);
+        if (!cached?.length) {
+          setLoading(true);
+        }
         setError('');
+
         const res = await getRecommendPlaylists(PAGE_SIZE);
         const result = res.data.result;
         if (!result?.length) {
-          setPlaylists([]);
+          if (!cached?.length) setPlaylists([]);
           setLoading(false);
           return;
         }
 
-        const items = result.map((item: Record<string, unknown>) => ({
+        const items: Playlist[] = result.map((item: Record<string, unknown>) => ({
           id: item.id as number,
           name: item.name as string,
           picUrl: item.picUrl as string,
@@ -135,15 +146,22 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
           creator: item.creator as { nickname: string } | undefined,
         }));
 
-        setPlaylists(items.map((i: (typeof items)[number]) => ({ ...i, songs: undefined })));
-        setLoading(false);
-
-        if (controller.signal.aborted) return;
-        const full = await fetchPlaylistsWithSongs(items);
         if (!controller.signal.aborted) {
-          setPlaylists(full);
-          setDailyCache('recommend_playlists', full);
+          setPlaylists(items);
+          setLoading(false);
+          setDailyCache('recommend_playlists', items);
         }
+
+        // 后台静默为前 4 个歌单补全歌曲预览
+        fetchPlaylistsWithSongs(items.slice(0, 4)).then((enhanced) => {
+          if (controller.signal.aborted) return;
+          setPlaylists((prev) => {
+            const map = new Map(enhanced.map((e) => [e.id, e]));
+            const nextList = prev.map((p) => map.get(p.id) || p);
+            setDailyCache('recommend_playlists', nextList);
+            return nextList;
+          });
+        }).catch(() => {});
       } catch (err) {
         if (!controller.signal.aborted) {
           console.error('无法连接到网易云 API', err);
@@ -172,59 +190,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             setDailySongs(res.data.data.dailySongs);
             setDailyCache('daily_songs', res.data.data.dailySongs);
           }
-        } catch {
-          // daily recommend unavailable
-        }
+        } catch {}
       };
       fetchUserData();
     });
   }, [authState]);
-
-  // 启动时预加载排行榜所有榜单歌曲到磁盘缓存
-  useEffect(() => {
-    let cancelled = false;
-
-    const preloadLeaderboard = async () => {
-      const cached = await getDailyCache<any[]>('toplist_charts');
-      let charts = cached;
-      if (!charts?.length) {
-        try {
-          const res = await getToplist();
-          const HIDDEN = new Set(['网易云古典榜', '网易云电音榜', '音乐合伙人推荐榜', '音乐合伙人热歌榜', '音乐合伙人留名榜', '音乐合伙人高分新歌榜', '音乐合伙人高分榜']);
-          charts = (res.data.list || []).filter((c: any) => !HIDDEN.has(c.name));
-          if (charts.length) setDailyCache('toplist_charts', charts);
-        } catch { return; }
-      }
-      if (!charts?.length || cancelled) return;
-
-      const BATCH = 5;
-      for (let i = 0; i < charts.length; i += BATCH) {
-        if (cancelled) break;
-        const batch = charts.slice(i, i + BATCH);
-        await Promise.allSettled(batch.map(async (chart: any) => {
-          const cacheKey = `toplist_tracks_${chart.id}`;
-          const existing = await getDailyCache<any[]>(cacheKey);
-          if (existing?.length || cancelled) return;
-          let offset = 0;
-          const allSongs: any[] = [];
-          while (!cancelled) {
-            try {
-              const res = await getPlaylistTrackAll(chart.id, 100, offset);
-              const songs = res.data.songs || [];
-              if (songs.length === 0) break;
-              allSongs.push(...songs);
-              offset += songs.length;
-              if (songs.length < 100) break;
-            } catch { break; }
-          }
-          if (!cancelled && allSongs.length) setDailyCache(cacheKey, allSongs);
-        }));
-      }
-    };
-
-    preloadLeaderboard();
-    return () => { cancelled = true; };
-  }, []);
 
   const value = {
     playlists, dailySongs, currentSong, setCurrentSong, loading, error, refreshPlaylists,

@@ -27,10 +27,6 @@ function createPreloadedAudio(url: string, id: number): HTMLAudioElement {
   return audio;
 }
 
-function getPreloadedAudio(id: number): HTMLAudioElement | undefined {
-  return audioPool.get(id);
-}
-
 function evictOldPreloads(currentId: number, keepIds: number[]) {
   const keep = new Set(keepIds);
   for (const [id, audio] of audioPool) {

@@ -31,8 +31,7 @@ const PlaylistsPage: FC = () => {
     fetchLocalPlaylists();
   };
 
-  const handleDelete = async (e: React.MouseEvent, playlistId: number) => {
-    e.stopPropagation();
+  const handleDelete = async (playlistId: number) => {
     if (!user?.id) return;
     await deleteLocalPlaylist(user.id, playlistId);
     fetchLocalPlaylists();

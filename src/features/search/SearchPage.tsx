@@ -276,7 +276,7 @@ const SearchPage: FC = () => {
               </div>
               {songs.map((song, i) => (
                 <SongRow key={song.id} song={song} index={i + 1} hoveredId={hoveredId} setHoveredId={setHoveredId}
-                  isPlaying={currentSong?.id === song.id} onPlay={() => playSong(song)} showAlbum />
+                  isPlaying={currentSong?.id === song.id} onPlay={() => playSong(song)} />
               ))}
             </div>
           )}
@@ -334,9 +334,9 @@ function Empty() {
   );
 }
 
-function SongRow({ song, index, hoveredId, setHoveredId, isPlaying, onPlay, showAlbum }: {
+function SongRow({ song, index, hoveredId, setHoveredId, isPlaying, onPlay }: {
   song: any; index: number; hoveredId: number | null; setHoveredId: (id: number | null) => void;
-  isPlaying: boolean; onPlay: () => void; showAlbum?: boolean;
+  isPlaying: boolean; onPlay: () => void;
 }) {
   const artists = song.ar || song.artists || [];
   const album = song.al || song.album || {};

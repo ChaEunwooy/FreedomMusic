@@ -70,19 +70,29 @@ const DailyRandom: FC = () => {
 
   const playAll = useCallback(async () => {
     if (!songs.length) return;
-    const withUrl = await Promise.allSettled(
-      songs.map(async (s) => {
-        const res = await getSongUrl(s.id);
-        const url = res.data.data?.[0]?.url;
-        return { ...s, url };
-      })
-    );
-    const valid = withUrl
-      .filter((r): r is PromiseFulfilledResult<HotSong & { url: string }> => r.status === 'fulfilled' && r.value.url)
-      .map((r) => ({ id: r.value.id, name: r.value.name, ar: [{ name: r.value.artist }], al: { picUrl: r.value.cover }, dt: r.value.duration, url: r.value.url }));
-    if (!valid.length) return;
-    setQueue(valid);
-    play(valid[0]);
+    try {
+      const res = await getSongUrl(songs.map((s) => s.id));
+      const urlList: Array<{ id: number; url: string }> = res.data?.data || [];
+      const urlMap = new Map<number, string>();
+      urlList.forEach((item) => {
+        if (item.id && item.url) urlMap.set(item.id, item.url);
+      });
+
+      const valid = songs
+        .filter((s) => urlMap.has(s.id))
+        .map((s) => ({
+          id: s.id,
+          name: s.name,
+          ar: [{ name: s.artist }],
+          al: { picUrl: s.cover },
+          dt: s.duration,
+          url: urlMap.get(s.id)!,
+        }));
+
+      if (!valid.length) return;
+      setQueue(valid);
+      play(valid[0]);
+    } catch {}
   }, [songs, setQueue, play]);
 
 

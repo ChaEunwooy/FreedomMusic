@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { FC } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft, faPlay, faPause, faHeart, faHeadphones, faClock, faPlayCircle } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faPause, faHeart, faHeadphones, faClock, faPlayCircle } from '@fortawesome/free-solid-svg-icons';
 import { usePlayer } from '../../context/PlayerContext';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';

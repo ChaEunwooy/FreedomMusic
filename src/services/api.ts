@@ -18,7 +18,10 @@ export const addTrackToPlaylist = (pid: number, trackIds: number[]) =>
   API.post('/playlist/tracks', { op: 'add', pid, tracks: trackIds.join(',') });
 
 // 歌曲
-export const getSongUrl = (id: number) => API.get(`/song/url?id=${id}`);
+export const getSongUrl = (id: number | number[] | string) => {
+  const ids = Array.isArray(id) ? id.join(',') : id;
+  return API.get(`/song/url?id=${ids}`);
+};
 export const getSongDetail = (ids: number[]) => API.get(`/song/detail?ids=${ids.join(',')}`);
 export const getLyric = (id: number) => API.get(`/lyric?id=${id}`);
 export const likeSong = (id: number, like = true) => API.get(`/like?id=${id}&like=${like}`);

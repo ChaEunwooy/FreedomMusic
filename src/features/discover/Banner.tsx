@@ -48,14 +48,17 @@ const Banner: FC = () => {
 
   const angleRef = useRef(0);
   const [rotateAngle, setRotateAngle] = useState(0);
+  const [enableTransition, setEnableTransition] = useState(false);
   const themeApplied = useRef(false);
 
   useEffect(() => {
     loadConfig().then((res) => {
       const cfg = res.data || {};
-      const savedAngle = cfg.mood_angle || 0;
-      angleRef.current = savedAngle;
-      setRotateAngle(savedAngle);
+      const savedAngle = Number(cfg.mood_angle) || 0;
+      // 规范化角度在 0~360 范围内，彻底杜绝历史累加成上千度的大数值
+      const normalizedAngle = ((savedAngle % 360) + 360) % 360;
+      angleRef.current = normalizedAngle;
+      setRotateAngle(normalizedAngle);
     }).catch(() => {});
   }, []);
 
@@ -109,8 +112,10 @@ const Banner: FC = () => {
 
   const handleMoodClick = (mood: Mood, index: number) => {
     if (animating) return;
+    setEnableTransition(true); // 只有用户主动点击时才开启丝滑旋转过渡动画
     const current = getCurrentPositions()[index];
     const delta = current.isLeft ? -120 : 120;
+    // 保持连续单向数值累加/累减，彻底消除从 0° 突变到 240° 导致的反向大转圈
     angleRef.current += delta;
     setRotateAngle(angleRef.current);
     setConfig('mood_angle', angleRef.current);
@@ -165,15 +170,17 @@ const Banner: FC = () => {
       const trackRes = await getPlaylistTrackAll(pl.id, 50);
       const tracks = trackRes.data.songs || [];
       if (!tracks.length) return;
-      const withUrl = await Promise.allSettled(
-        tracks.map(async (t: any) => {
-          const r = await getSongUrl(t.id);
-          return { ...t, url: r.data.data?.[0]?.url };
-        })
-      );
-      const valid = withUrl
-        .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value.url)
-        .map((r) => r.value);
+      const resUrl = await getSongUrl(tracks.map((t: any) => t.id));
+      const urlList: Array<{ id: number; url: string }> = resUrl.data?.data || [];
+      const urlMap = new Map<number, string>();
+      urlList.forEach((item) => {
+        if (item.id && item.url) urlMap.set(item.id, item.url);
+      });
+
+      const valid = tracks
+        .filter((t: any) => urlMap.has(t.id))
+        .map((t: any) => ({ ...t, url: urlMap.get(t.id) }));
+
       if (!valid.length) return;
       moodDataRef.current[selectedMood] = { playlistId: pl.id, tracks: valid };
       setDailyCache(`mood_${selectedMood}`, { playlistId: pl.id, tracks: valid });
@@ -227,7 +234,7 @@ const Banner: FC = () => {
           className="relative w-full h-full"
           style={{
             transform: `rotate(${rotateAngle}deg)`,
-            transition: 'transform 0.6s cubic-bezier(0.34,1.56,0.64,1)',
+            transition: enableTransition ? 'transform 0.6s cubic-bezier(0.34,1.56,0.64,1)' : 'none',
             transformOrigin: '50px 50px',
           }}
         >
@@ -254,7 +261,9 @@ const Banner: FC = () => {
                   left: bladePositions[i].x,
                   top: bladePositions[i].y,
                   transform: `rotate(${-rotateAngle}deg)`,
-                  transition: 'transform 0.6s cubic-bezier(0.34,1.56,0.64,1), background 0.2s, border-color 0.2s, box-shadow 0.2s',
+                  transition: enableTransition
+                    ? 'transform 0.6s cubic-bezier(0.34,1.56,0.64,1), background 0.2s, border-color 0.2s, box-shadow 0.2s'
+                    : 'background 0.2s, border-color 0.2s, box-shadow 0.2s',
                 }}
                 title={t(`mood.${mood}`)}
               >

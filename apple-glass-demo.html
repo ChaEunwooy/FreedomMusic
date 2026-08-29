@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>真实物理光学玻璃模拟器 - Realistic Optical Glass Simulator</title>
+  <style>
+    :root {
+      --glass-thickness: 8px;
+      --glass-ior: 1.52;
+      --glass-tint-r: 255;
+      --glass-tint-g: 255;
+      --glass-tint-b: 255;
+      --glass-tint-a: 0.02;
+      --fresnel-power: 0.9;
+      --light-x: 50%;
+      --light-y: 30%;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "PingFang SC", "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      min-height: 100vh;
+      background-color: #070a12;
+      color: #fff;
+      overflow-x: hidden;
+      position: relative;
+      user-select: none;
+    }
+
+    /* ── 背景物理桌面层（清晰高对比度，检验真实玻璃的物理穿透与位移） ── */
+    .background-stage {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    /* 模拟环境光源球 */
+    .glow-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.85;
+      animation: orbFloat 16s ease-in-out infinite alternate;
+    }
+
+    .orb-1 {
+      width: 580px;
+      height: 580px;
+      background: radial-gradient(circle, #ff1a53 0%, #ff8c00 80%);
+      top: -100px;
+      left: 10%;
+    }
+
+    .orb-2 {
+      width: 650px;
+      height: 650px;
+      background: radial-gradient(circle, #6f00ff 0%, #0080ff 80%);
+      bottom: 2%;
+      right: 6%;
+      animation-duration: 20s;
+      animation-delay: -5s;
+    }
+
+    .orb-3 {
+      width: 480px;
+      height: 480px;
+      background: radial-gradient(circle, #00e676 0%, #00b0ff 80%);
+      top: 38%;
+      left: 35%;
+      animation-duration: 14s;
+      animation-delay: -8s;
+    }
+
+    @keyframes orbFloat {
+      0% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(80px, 45px) scale(1.1); }
+      100% { transform: translate(-50px, 85px) scale(0.95); }
+    }
+
+    /* 桌面高精细工程网格与直尺标线（用于检验玻璃透视与线条） */
+    .bg-grid-layer {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.15) 1.5px, transparent 1.5px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.15) 1.5px, transparent 1.5px),
+        linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+      background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+    }
+
+    .bg-typography {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 50px 40px;
+      font-size: 76px;
+      font-weight: 900;
+      letter-spacing: -2px;
+      color: rgba(255, 255, 255, 0.5);
+      line-height: 1.15;
+      pointer-events: none;
+    }
+
+    .bg-typography .color-text {
+      background: linear-gradient(90deg, #ff0077, #ff9900, #00f0ff, #9d00ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .bg-photo-layer {
+      position: absolute;
+      inset: 0;
+      background: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1600') center/cover no-repeat;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    /* ── 前台容器 ── */
+    .container {
+      position: relative;
+      z-index: 10;
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 36px 24px 80px;
+    }
+
+    /* 顶部标题栏 */
+    header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      font-size: 13px;
+      font-weight: 600;
+      color: #38bdf8;
+      margin-bottom: 12px;
+      box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.5);
+    }
+
+    h1 {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    p.subtitle {
+      font-size: 15px;
+      color: #94a3b8;
+      max-width: 780px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+
+    /* ── 控制坞 ── */
+    .control-dock {
+      background: rgba(10, 15, 28, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: inset 0 1.5px 1px rgba(255, 255, 255, 0.3), 0 20px 40px rgba(0, 0, 0, 0.5);
+      border-radius: 20px;
+      padding: 20px 28px;
+      margin-bottom: 36px;
+    }
+
+    .control-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      align-items: center;
+    }
+
+    .control-item {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .control-label span.value {
+      color: #38bdf8;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      background: rgba(56, 189, 248, 0.15);
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    input[type="range"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.2);
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+      border: 2px solid #fff;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 7px 15px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+      border-color: rgba(255, 255, 255, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn.active {
+      background: #38bdf8;
+      color: #05070d;
+      border-color: #38bdf8;
+      font-weight: 700;
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       真实物理玻璃板实现 (True Physical Optical Glass Pane)
+       ══════════════════════════════════════════════════════════════ */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 28px;
+      margin-bottom: 40px;
+    }
+
+    .card-wrapper {
+      position: relative;
+    }
+
+    .card-title-tag {
+      position: absolute;
+      top: -12px;
+      left: 20px;
+      z-index: 20;
+      padding: 4px 14px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #090e1a;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    }
+
+    /* ── 物理玻璃核心组件 ── */
+    .real-glass-slab {
+      position: relative;
+      border-radius: 28px;
+      min-height: 300px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 32px 26px;
+      
+      /* 1. 真实超白玻璃基体（99% 高透，无雾化模糊） */
+      background: rgba(var(--glass-tint-r), var(--glass-tint-g), var(--glass-tint-b), var(--glass-tint-a));
+      
+      /* 2. 真实厚度与物理前后双表面反射（Double Fresnel Highlights） */
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 
+        /* 前表面 45° CNC 抛光迎光倒角高光 */
+        inset 0 1.5px 1px 0 rgba(255, 255, 255, var(--fresnel-power)),
+        /* 后表面平行微弱反射（Double Layer Reflection） */
+        inset 0 3px 2px -1px rgba(255, 255, 255, calc(var(--fresnel-power) * 0.4)),
+        /* 侧边切面菲涅尔微受光 */
+        inset 1.5px 0 1.5px 0 rgba(255, 255, 255, calc(var(--fresnel-power) * 0.35)),
+        inset -1.5px 0 1.5px 0 rgba(0, 0, 0, 0.25),
+        /* 底部背光面暗调切口 */
+        inset 0 -2px 1.5px 0 rgba(0, 0, 0, 0.35),
+        /* 物理厚度在桌面上投下的双层环境遮挡漫反射阴影 */
+        0 20px 45px -10px rgba(0, 0, 0, 0.65),
+        0 2px 8px 0 rgba(0, 0, 0, 0.25);
+        
+      transition: transform 0.15s ease-out;
+    }
+
+    /* 真实表面光滑环境反光层（随光源位置变化的光斑倒影） */
+    .glass-surface-reflection {
+      position: absolute;
+      inset: 0;
+      border-radius: 28px;
+      pointer-events: none;
+      z-index: 2;
+      background: radial-gradient(
+        700px circle at var(--light-x) var(--light-y),
+        rgba(255, 255, 255, 0.16) 0%,
+        rgba(255, 255, 255, 0.04) 40%,
+        transparent 70%
+      );
+      mix-blend-mode: overlay;
+    }
+
+    /* 真实玻璃边缘切面全反射微亮边（Total Internal Reflection TIR Edge） */
+    .glass-edge-tir {
+      position: absolute;
+      inset: 0;
+      border-radius: 28px;
+      pointer-events: none;
+      z-index: 3;
+      border: 1px solid transparent;
+      background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.7) 0%,
+        rgba(200, 240, 255, 0.3) 25%,
+        transparent 50%,
+        rgba(0, 0, 0, 0.4) 100%
+      ) border-box;
+      -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: destination-out;
+      mask-composite: exclude;
+    }
+
+    /* ── 全屏自由拖拽：高保真物理厚玻璃板 ── */
+    .draggable-physical-glass {
+      position: fixed;
+      top: 55%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 400px;
+      height: 240px;
+      border-radius: 36px;
+      z-index: 100;
+      cursor: grab;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      touch-action: none;
+      
+      background: rgba(var(--glass-tint-r), var(--glass-tint-g), var(--glass-tint-b), 0.03);
+      border: 1.5px solid rgba(255, 255, 255, 0.5);
+      
+      box-shadow: 
+        inset 0 2px 1.5px 0 rgba(255, 255, 255, 0.95),
+        inset 0 4px 3px -1px rgba(255, 255, 255, 0.45),
+        inset 2px 0 2px 0 rgba(255, 255, 255, 0.4),
+        inset -2px 0 2px 0 rgba(0, 0, 0, 0.3),
+        inset 0 -2.5px 2px 0 rgba(0, 0, 0, 0.4),
+        0 30px 65px -12px rgba(0, 0, 0, 0.85),
+        0 4px 14px 0 rgba(0, 0, 0, 0.35);
+    }
+
+    .draggable-physical-glass:active {
+      cursor: grabbing;
+      box-shadow: 
+        inset 0 2px 1.5px 0 #fff,
+        0 40px 80px -10px rgba(0, 0, 0, 0.95);
+    }
+
+    .lens-tag {
+      font-size: 15px;
+      font-weight: 800;
+      color: #fff;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      position: relative;
+      z-index: 5;
+    }
+
+    .lens-hint {
+      font-size: 12px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.9);
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+      position: relative;
+      z-index: 5;
+      text-align: center;
+      max-width: 320px;
+      line-height: 1.4;
+    }
+
+    /* 内部卡片内容区域 */
+    .card-content {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
+    }
+
+    .song-preview {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .song-cover {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #00f2fe, #4facfe);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      flex-shrink: 0;
+    }
+
+    .song-info h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    }
+
+    .song-info p {
+      font-size: 13px;
+      color: #cbd5e1;
+    }
+
+    .playback-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 3px;
+      position: relative;
+      margin: 16px 0 14px;
+      overflow: hidden;
+    }
+
+    .playback-progress {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 65%;
+      background: #38bdf8;
+      border-radius: 3px;
+      box-shadow: 0 0 10px #38bdf8;
+    }
+
+    .features-list {
+      list-style: none;
+      font-size: 13px;
+      color: #f1f5f9;
+      line-height: 1.8;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+    }
+
+    .features-list li::before {
+      content: '✦ ';
+      color: #38bdf8;
+      font-weight: bold;
+    }
+
+    /* 真实物理光学原理解析 */
+    .optical-diagram {
+      margin-top: 36px;
+      padding: 24px;
+      border-radius: 20px;
+      background: rgba(12, 18, 32, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .diag-item {
+      display: flex;
+      gap: 12px;
+    }
+
+    .diag-icon {
+      font-size: 28px;
+    }
+
+    .diag-text h4 {
+      font-size: 15px;
+      color: #38bdf8;
+      margin-bottom: 4px;
+    }
+
+    .diag-text p {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+
+    .code-box {
+      margin-top: 32px;
+      padding: 24px;
+      border-radius: 20px;
+      background: rgba(8, 12, 22, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: #a5f3fc;
+      line-height: 1.6;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 动态底层高精度工程网格与大字背景 -->
+  <div class="background-stage" id="bgStage">
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+    <div class="glow-orb orb-3"></div>
+    
+    <div class="bg-grid-layer"></div>
+    <div class="bg-photo-layer" id="photoLayer"></div>
+
+    <div class="bg-typography">
+      <div>REAL PHYSICAL GLASS</div>
+      <div><span class="color-text">OPTICAL PURITY</span> n=1.52</div>
+      <div>DOUBLE FRESNEL GLINT</div>
+      <div>FREEDOM MUSIC 2026</div>
+    </div>
+  </div>
+
+  <!-- 可任意拖拽的【高保真物理厚玻璃板】 -->
+  <div class="draggable-physical-glass" id="dragGlass">
+    <div class="glass-surface-reflection"></div>
+    <div class="glass-edge-tir"></div>
+    
+    <div class="lens-tag">🪟 真实物理厚玻璃板 (8mm)</div>
+    <div class="lens-hint">
+      按住拖动滑过背景网格与大字：<strong>体验 100% 真实纯净通透、前后双表面微反射与 CNC 倒角物理高光</strong>。
+    </div>
+  </div>
+
+  <!-- 页面主体内容 -->
+  <div class="container">
+    <header>
+      <div class="badge">🔬 真实物理光学：折射率 n=1.52 · 前后双表面反射 · 零塑料雾感</div>
+      <h1>真实物理光学玻璃模拟器</h1>
+      <p class="subtitle">
+        严格遵循物理世界光学规律：<strong>没有人工发灰的毛玻璃模糊</strong>，通过<strong>前后双表面菲涅尔微反射、CNC 45° 倒角高光、全反射亮边与动态环境反光</strong>还原一块真实的物理厚玻璃。
+      </p>
+    </header>
+
+    <!-- 实时调节控制面板 -->
+    <div class="control-dock">
+      <div class="control-grid">
+        
+        <!-- 玻璃厚度感 -->
+        <div class="control-item">
+          <div class="control-label">
+            <span>物理厚度与切角感 (Thickness)</span>
+            <span class="value" id="valThickness">8mm</span>
+          </div>
+          <input type="range" id="inputThickness" min="3" max="18" value="8">
+        </div>
+
+        <!-- 菲涅尔迎光高光 -->
+        <div class="control-item">
+          <div class="control-label">
+            <span>菲涅尔表面高光强度 (Fresnel)</span>
+            <span class="value" id="valFresnel">90%</span>
+          </div>
+          <input type="range" id="inputFresnel" min="30" max="100" value="90">
+        </div>
+
+        <!-- 玻璃基体微染色 -->
+        <div class="control-item">
+          <div class="control-label">
+            <span>玻璃介质吸收率 (Bulk Tint)</span>
+            <span class="value" id="valTint">2%</span>
+          </div>
+          <input type="range" id="inputTint" min="0" max="15" value="2">
+        </div>
+      </div>
+
+      <!-- 真实玻璃材质切换预设 -->
+      <div class="btn-group">
+        <span style="font-size: 13px; color: #94a3b8; font-weight: 500;">真实材质预设：</span>
+        <button class="btn active" onclick="applyGlassPreset('ultra-clear', 8, 0.9, 0.02, 255, 255, 255)">💎 8mm 超白光学水晶玻璃</button>
+        <button class="btn" onclick="applyGlassPreset('ceramic', 4, 0.95, 0.01, 240, 250, 255)">📱 4mm 苹果微晶陶瓷盖板</button>
+        <button class="btn" onclick="applyGlassPreset('float', 15, 0.85, 0.04, 230, 255, 245)">🧊 15mm 浮法厚玻璃砖(经典微青)</button>
+        
+        <span style="font-size: 13px; color: #94a3b8; font-weight: 500; margin-left: 12px;">切换底图：</span>
+        <button class="btn" id="btnToggleBg" onclick="toggleBackground()">切换到高清风景壁纸</button>
+      </div>
+    </div>
+
+    <!-- 演示卡片展示 -->
+    <div class="cards-grid">
+      
+      <!-- 卡片 1: 真实超白物理玻璃面板 -->
+      <div class="card-wrapper">
+        <div class="card-title-tag" style="color: #38bdf8;">① 真实超白光学玻璃板 (100% 纯净通透)</div>
+        <div class="real-glass-slab" id="glassCard1">
+          <div class="glass-surface-reflection"></div>
+          <div class="glass-edge-tir"></div>
+          
+          <div class="card-content">
+            <div class="song-preview">
+              <div class="song-cover">🪟</div>
+              <div class="song-info">
+                <h3>Real Optical Glass Slab</h3>
+                <p>折射率 1.52 · 真实物理前后反射</p>
+              </div>
+            </div>
+            <div class="playback-bar"><div class="playback-progress"></div></div>
+            <ul class="features-list">
+              <li><strong>0% 虚假模糊</strong>：文字和背景线条 100% 清澈通透、锐利如初</li>
+              <li><strong>前后双表面反射</strong>：真实还原玻璃厚度带来的微双重反射倒角</li>
+              <li><strong>全反射高光亮边 (TIR)</strong>：光线在侧面切角聚集产生的晶莹白边</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片 2: 动态 3D 光源跟随反射卡片 -->
+      <div class="card-wrapper">
+        <div class="card-title-tag" style="color: #a855f7;">② 3D 鼠标光源物理反光玻璃</div>
+        <div class="real-glass-slab" id="dynamicGlassCard" style="cursor: crosshair;">
+          <div class="glass-surface-reflection" id="cardReflection"></div>
+          <div class="glass-edge-tir"></div>
+          
+          <div class="card-content">
+            <div class="song-preview">
+              <div class="song-cover" style="background: linear-gradient(135deg, #a855f7, #ec4899);">✨</div>
+              <div class="song-info">
+                <h3>Specular Light Reflection</h3>
+                <p>滑动鼠标感受玻璃表面的光滑反射</p>
+              </div>
+            </div>
+            <div class="playback-bar"><div class="playback-progress" style="width: 80%; background: #c084fc; box-shadow: 0 0 10px #c084fc;"></div></div>
+            <ul class="features-list">
+              <li>根据鼠标位置计算<strong>真实玻璃平面的光滑高光倒影</strong></li>
+              <li>带有微视角倾斜 3D 视差（Tilt Feedback）</li>
+              <li>纯净通透，如同真实拿在手中的一块厚重玻璃面板</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 真实物理光学特性原理解析 -->
+    <div class="optical-diagram">
+      <div class="diag-item">
+        <div class="diag-icon">🔬</div>
+        <div class="diag-text">
+          <h4>1. 真实玻璃为什么不模糊？</h4>
+          <p>干净的物理玻璃表面光滑平整（平整度达纳米级），光线直接直线透射，不存在微观粗糙漫散射，因此完全不需要假模假样的毛玻璃 blur。</p>
+        </div>
+      </div>
+      <div class="diag-item">
+        <div class="diag-icon">📐</div>
+        <div class="diag-text">
+          <h4>2. 前后双表面菲涅尔反射</h4>
+          <p>玻璃有厚度，光线在进入空气-玻璃前表面（\(R_1 \approx 4\%\)）和玻璃-空气后表面（\(R_2 \approx 4\%\)）分别产生反射，构成优雅的双线高光。</p>
+        </div>
+      </div>
+      <div class="diag-item">
+        <div class="diag-icon">💎</div>
+        <div class="diag-text">
+          <h4>3. CNC 倒角与全反射亮边</h4>
+          <p>经过精细抛光的 45° CNC 斜角在迎光面发生内部全反射（TIR），使玻璃四周边缘天然产生一条极其锐利细腻的晶亮白光。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 核心 CSS 规范 -->
+    <div class="code-box">
+      <div style="color: #94a3b8; margin-bottom: 8px;">/* 真实物理光学玻璃（Real Optical Glass）标准 CSS 规范 */</div>
+<pre>
+.real-optical-glass {
+  /* 1. 真实高透基底（98%~99% 纯净透光，无 blur 雾化） */
+  background: rgba(255, 255, 255, 0.02);
+  
+  /* 2. 真实厚度与前后双表面反射（Double Fresnel Layers） */
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 
+    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.9),  /* 前表面 CNC 迎光高光 */
+    inset 0 3px 2px -1px rgba(255, 255, 255, 0.4), /* 后表面平行微弱反射 */
+    inset 1.5px 0 1.5px 0 rgba(255, 255, 255, 0.35),/* 侧边切面受光 */
+    inset 0 -2px 1.5px 0 rgba(0, 0, 0, 0.35),      /* 底部暗部收口 */
+    0 20px 45px -10px rgba(0, 0, 0, 0.65);         /* 桌面真实环境遮挡阴影 */
+    
+  border-radius: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 3. 真实表面光滑环境反光层 */
+.real-optical-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    700px circle at var(--light-x, 50%) var(--light-y, 30%),
+    rgba(255, 255, 255, 0.16) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+</pre>
+    </div>
+  </div>
+
+  <script>
+    // ── 1. 全局鼠标光源跟随（模拟真实环境光在玻璃表面的反射） ──
+    const root = document.documentElement;
+
+    window.addEventListener('mousemove', (e) => {
+      const xPercent = ((e.clientX / window.innerWidth) * 100).toFixed(1) + '%';
+      const yPercent = ((e.clientY / window.innerHeight) * 100).toFixed(1) + '%';
+      root.style.setProperty('--light-x', xPercent);
+      root.style.setProperty('--light-y', yPercent);
+    });
+
+    // ── 2. 参数滑块控制 ──
+    const inputThickness = document.getElementById('inputThickness');
+    const inputFresnel = document.getElementById('inputFresnel');
+    const inputTint = document.getElementById('inputTint');
+
+    const valThickness = document.getElementById('valThickness');
+    const valFresnel = document.getElementById('valFresnel');
+    const valTint = document.getElementById('valTint');
+
+    function updateThickness(val) {
+      root.style.setProperty('--glass-thickness', val + 'px');
+      valThickness.textContent = val + 'mm';
+    }
+
+    function updateFresnel(valPercent) {
+      const fr = (valPercent / 100).toFixed(2);
+      root.style.setProperty('--fresnel-power', fr);
+      valFresnel.textContent = valPercent + '%';
+    }
+
+    function updateTint(valPercent) {
+      const tint = (valPercent / 100).toFixed(2);
+      root.style.setProperty('--glass-tint-a', tint);
+      valTint.textContent = valPercent + '%';
+    }
+
+    inputThickness.addEventListener('input', (e) => updateThickness(e.target.value));
+    inputFresnel.addEventListener('input', (e) => updateFresnel(e.target.value));
+    inputTint.addEventListener('input', (e) => updateTint(e.target.value));
+
+    // ── 3. 材质预设切换 ──
+    window.applyGlassPreset = function(type, thickness, fresnel, tint, r, g, b) {
+      inputThickness.value = thickness;
+      inputFresnel.value = Math.round(fresnel * 100);
+      inputTint.value = Math.round(tint * 100);
+
+      updateThickness(thickness);
+      updateFresnel(Math.round(fresnel * 100));
+      updateTint(Math.round(tint * 100));
+
+      root.style.setProperty('--glass-tint-r', r);
+      root.style.setProperty('--glass-tint-g', g);
+      root.style.setProperty('--glass-tint-b', b);
+
+      document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
+      if (event && event.target) event.target.classList.add('active');
+    };
+
+    // ── 4. 背景图切换 ──
+    let isPhoto = false;
+    const photoLayer = document.getElementById('photoLayer');
+    const btnToggleBg = document.getElementById('btnToggleBg');
+
+    window.toggleBackground = function() {
+      isPhoto = !isPhoto;
+      if (isPhoto) {
+        photoLayer.style.opacity = '1';
+        btnToggleBg.textContent = '切换回工程网格图';
+        btnToggleBg.classList.add('active');
+      } else {
+        photoLayer.style.opacity = '0';
+        btnToggleBg.textContent = '切换到高清风景壁纸';
+        btnToggleBg.classList.remove('active');
+      }
+    };
+
+    // ── 5. 3D 鼠标反射卡片 ──
+    const dynCard = document.getElementById('dynamicGlassCard');
+
+    dynCard.addEventListener('mousemove', (e) => {
+      const rect = dynCard.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      const rotateX = ((y - centerY) / centerY) * -6;
+      const rotateY = ((x - centerX) / centerX) * 6;
+      dynCard.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+    });
+
+    dynCard.addEventListener('mouseleave', () => {
+      dynCard.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg)';
+    });
+
+    // ── 6. 拖拽真实物理厚玻璃板 ──
+    const dragGlass = document.getElementById('dragGlass');
+    let isDragging = false;
+    let startX = 0, startY = 0;
+    let initialLeft = 0, initialTop = 0;
+
+    dragGlass.addEventListener('pointerdown', (e) => {
+      isDragging = true;
+      dragGlass.setPointerCapture(e.pointerId);
+      startX = e.clientX;
+      startY = e.clientY;
+      const rect = dragGlass.getBoundingClientRect();
+      initialLeft = rect.left;
+      initialTop = rect.top;
+      dragGlass.style.transform = 'none';
+      dragGlass.style.left = `${initialLeft}px`;
+      dragGlass.style.top = `${initialTop}px`;
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      dragGlass.style.left = `${initialLeft + dx}px`;
+      dragGlass.style.top = `${initialTop + dy}px`;
+    });
+
+    window.addEventListener('pointerup', () => {
+      isDragging = false;
+    });
+  </script>
+</body>
+</html>

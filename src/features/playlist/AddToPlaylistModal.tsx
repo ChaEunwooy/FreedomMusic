@@ -6,7 +6,6 @@ import { faXmark, faCheck, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { useI18n } from '../../i18n';
 import { useAuth } from '../../context/AuthContext';
 import { addTrackToPlaylist, addTracksToLocalPlaylist, getSongDetail } from '../../services/api';
-import { getDailyCache } from '../../utils/dailyCache';
 
 interface AddToPlaylistModalProps {
   open: boolean;

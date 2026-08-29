@@ -5,9 +5,48 @@ const os = require('os')
 const axios = require('axios')
 const QRCode = require('qrcode')
 
-// ── 0. 初始化 dataDir & 配置 ──
+// ── 0. 全局异常保护与初始化 dataDir ──
+process.on('uncaughtException', (err) => {
+  console.error('[Process Exception]', err.message)
+})
+process.on('unhandledRejection', (reason) => {
+  console.error('[Process Rejection]', reason)
+})
+
+// 中国大陆真实高可用 IP 池生成器（确保在开启任何梯子或海外网络下均可顺畅访问网易云）
+function getRandomChinaIP() {
+  const chinaIPRanges = [
+    ['116.25.0.0', '116.25.255.255'],    // 广东电信
+    ['183.14.0.0', '183.14.255.255'],    // 广东电信
+    ['223.73.0.0', '223.73.255.255'],    // 广东移动
+    ['114.80.0.0', '114.95.255.255'],    // 上海电信
+    ['120.204.0.0', '120.204.255.255'],  // 上海移动
+    ['123.112.0.0', '123.127.255.255'],  // 北京联通
+    ['218.240.0.0', '218.241.255.255'],  // 北京联通
+    ['117.136.0.0', '117.136.255.255'],  // 浙江移动
+    ['122.224.0.0', '122.228.255.255'],  // 浙江电信
+    ['218.88.0.0', '218.90.255.255'],    // 四川电信
+  ]
+  const range = chinaIPRanges[Math.floor(Math.random() * chinaIPRanges.length)]
+  const start = range[0].split('.').map(Number)
+  const end = range[1].split('.').map(Number)
+  return [
+    Math.floor(Math.random() * (end[0] - start[0] + 1)) + start[0],
+    Math.floor(Math.random() * (end[1] - start[1] + 1)) + start[1],
+    Math.floor(Math.random() * (end[2] - start[2] + 1)) + start[2],
+    Math.floor(Math.random() * (end[3] - start[3] + 1)) + start[3],
+  ].join('.')
+}
+global.cnIp = getRandomChinaIP()
+
 const dataDir = path.join(os.homedir(), '.freedom-music')
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true })
+
+// 预创建系统临时目录下的 anonymous_token，防止 NCM 依赖加载时抛出 ENOENT 异常
+const tmpAnonToken = path.join(os.tmpdir(), 'anonymous_token')
+if (!fs.existsSync(tmpAnonToken)) {
+  try { fs.writeFileSync(tmpAnonToken, '', 'utf-8') } catch {}
+}
 
 const MIN_STORAGE = 500 * 1024 * 1024      // 500 MB
 const MAX_STORAGE = 10 * 1024 * 1024 * 1024 // 10 GB
@@ -71,7 +110,7 @@ const { weapi } = require(path.join(__dirname, 'node_modules', 'NeteaseCloudMusi
 // ── 2. 导入其余工具（用于非登录 API）──
 const ncmRequest = require(path.join(__dirname, 'node_modules', 'NeteaseCloudMusicApi', 'util', 'request.js'))
 const { getModulesDefinitions } = require(path.join(__dirname, 'node_modules', 'NeteaseCloudMusicApi', 'server.js'))
-const { cookieToJson, generateRandomChineseIP } = require(path.join(__dirname, 'node_modules', 'NeteaseCloudMusicApi', 'util', 'index.js'))
+const { cookieToJson } = require(path.join(__dirname, 'node_modules', 'NeteaseCloudMusicApi', 'util', 'index.js'))
 const decode = require('safe-decode-uri-component')
 
 // ── 3. 辅助函数 ──
@@ -113,35 +152,47 @@ function getSessionCookieObj() {
   return obj
 }
 
-// ── 4. 直连网易云 weapi 请求（未登录时用 anonymousToken，登录时用 sessionCookie）──
-async function directWeapiRequest(apiPath, data, useSession = false) {
+// ── 4. 直连网易云 weapi 请求（自动绕过环境变量代理干扰并注入国内公网 IP）──
+async function directWeapiRequest(apiPath, data, useSession = false, retry = 1) {
   const encrypted = weapi(data)
   const body = new URLSearchParams(encrypted).toString()
+  const cnIp = global.cnIp || getRandomChinaIP()
 
   const override = useSession ? getSessionCookieObj() : {}
-  const res = await axios({
-    method: 'POST',
-    url: `https://music.163.com/weapi${apiPath}`,
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Referer': NETEASE_REFERER,
-      'User-Agent': NETEASE_UA,
-      'Cookie': cookieObjToString(buildCookie(override)),
-      'Accept': '*/*',
-      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-      'Origin': 'https://music.163.com',
-    },
-    data: body,
-    responseType: 'json',
-    timeout: 15000,
-  })
+  try {
+    const res = await axios({
+      method: 'POST',
+      url: `https://music.163.com/weapi${apiPath}`,
+      proxy: false, // 禁用 Node.js 环境变量全局代理，避免海外节点导致版权封锁
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Referer': NETEASE_REFERER,
+        'User-Agent': NETEASE_UA,
+        'Cookie': cookieObjToString(buildCookie(override)),
+        'Accept': '*/*',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        'Origin': 'https://music.163.com',
+        'X-Real-IP': cnIp,
+        'X-Forwarded-For': cnIp,
+      },
+      data: body,
+      responseType: 'json',
+      timeout: 15000,
+    })
 
-  const result = res.data
-  const setCookie = res.headers['set-cookie']
-  if (setCookie && setCookie.length > 0) {
-    result._setCookie = setCookie
+    const result = res.data
+    const setCookie = res.headers['set-cookie']
+    if (setCookie && setCookie.length > 0) {
+      result._setCookie = setCookie
+    }
+    return result
+  } catch (err) {
+    if (retry > 0) {
+      global.cnIp = getRandomChinaIP()
+      return directWeapiRequest(apiPath, data, useSession, retry - 1)
+    }
+    throw err
   }
-  return result
 }
 
 // ── 5. 初始化 anonymous_token ──
@@ -164,35 +215,43 @@ async function initAnonymousToken() {
   }
 }
 
-// ── 5.1 内存缓存 ──
+// ── 5.1 内存极速缓存 ──
 const responseCache = new Map()
 const CACHE_RULES = {
-  '/api/playlist/detail': 60 * 1000,
-  '/api/playlist/track/all': 60 * 1000,
-  '/api/personalized': 5 * 60 * 1000,
-  '/api/toplist': 5 * 60 * 1000,
-  '/api/top/playlist': 5 * 60 * 1000,
+  '/playlist/detail': 10 * 60 * 1000,    // 10分钟
+  '/playlist/track/all': 10 * 60 * 1000, // 10分钟
+  '/personalized': 15 * 60 * 1000,       // 15分钟
+  '/toplist': 30 * 60 * 1000,            // 30分钟
+  '/top/playlist': 15 * 60 * 1000,       // 15分钟
+  '/top/song': 15 * 60 * 1000,           // 15分钟
+  '/song/detail': 30 * 60 * 1000,        // 30分钟
+  '/song/url': 10 * 60 * 1000,           // 10分钟
+  '/lyric': 60 * 60 * 1000,              // 1小时
+  '/artists': 30 * 60 * 1000,            // 30分钟
+  '/artist/top/song': 30 * 60 * 1000,     // 30分钟
+  '/album': 30 * 60 * 1000,              // 30分钟
 }
 
 function getCacheKey(req) {
   const url = req.originalUrl || req.url
-  return req.method + ':' + url
+  return req.method + ':' + url.replace(/^\/api/, '')
 }
 
 function cacheMiddleware(req, res, next) {
-  const pathname = req.path
-  const ttl = CACHE_RULES[pathname]
-  if (!ttl) return next()
+  const cleanPath = (req.path || '').replace(/^\/api/, '')
+  const ttl = CACHE_RULES[cleanPath]
+  if (!ttl || req.method !== 'GET') return next()
 
   const key = getCacheKey(req)
   const hit = responseCache.get(key)
   if (hit && Date.now() - hit.ts < ttl) {
+    console.log('[Memory Cache HIT 🚀]', key)
     return res.status(hit.status).json(hit.body)
   }
 
   const originalJson = res.json.bind(res)
   res.json = (body) => {
-    if (res.statusCode >= 200 && res.statusCode < 300) {
+    if (res.statusCode >= 200 && res.statusCode < 300 && body) {
       responseCache.set(key, { status: res.statusCode, body, ts: Date.now() })
     }
     return originalJson(body)
@@ -200,13 +259,13 @@ function cacheMiddleware(req, res, next) {
   next()
 }
 
-// 定期清理过期缓存（每小时）
+// 定期清理过期缓存（每 10 分钟清理一次内存）
 setInterval(() => {
   const now = Date.now()
   const MS_PER_DAY = 86400000
   // 清理内存缓存
   for (const [key, val] of responseCache) {
-    if (now - val.ts > 10 * 60 * 1000) responseCache.delete(key)
+    if (now - val.ts > 30 * 60 * 1000) responseCache.delete(key)
   }
   // 清理磁盘缓存（7天过期）
   try {
@@ -223,7 +282,7 @@ setInterval(() => {
       }
     }
   } catch {}
-}, 60 * 60 * 1000)
+}, 10 * 60 * 1000)
 
 // ── 6. 启动服务器 ──
 async function start() {
@@ -232,7 +291,7 @@ async function start() {
   app.use(express.urlencoded({ extended: true, limit: '10mb' }))
   app.use(cacheMiddleware)
 
-  global.cnIp = generateRandomChineseIP()
+  global.cnIp = getRandomChinaIP()
   await initAnonymousToken()
 
   // ── 7. 登录状态 ──
@@ -560,16 +619,19 @@ async function start() {
         frontendCookie = cookieToJson(decode(req.body.cookie))
       }
 
+      const currentCnIp = global.cnIp || getRandomChinaIP()
       const query = Object.assign({}, req.query, req.body, req.files || {})
       query.cookie = frontendCookie || getSessionCookieObj()
+      query.realIP = currentCnIp
+      query.ip = currentCnIp
 
       try {
         const moduleResponse = await def.module(query, (...params) => {
           const obj = [...params]
-          let ip = req.ip
-          if (ip.substring(0, 7) === '::ffff:') ip = ip.substring(7)
-          if (ip === '::1') ip = global.cnIp
-          obj[3] = { ...obj[3], ip }
+          const options = obj[3] || {}
+          options.ip = currentCnIp
+          options.realIP = currentCnIp
+          obj[3] = options
           return ncmRequest(...obj)
         })
 
@@ -600,24 +662,28 @@ async function start() {
         res.status(moduleResponse.status).json(body)
       } catch (moduleResponse) {
         console.log('[ERR]', decode(req.originalUrl), {
-          status: moduleResponse.status,
-          body: moduleResponse.body,
+          status: moduleResponse?.status || 500,
+          body: moduleResponse?.body || moduleResponse?.message,
         })
-        if (!moduleResponse.body) {
+        if (!moduleResponse || !moduleResponse.body) {
           res.status(404).send({ code: 404, data: null, msg: 'Not Found' })
           return
         }
         if (moduleResponse.body.code == '301') moduleResponse.body.msg = '需要登录'
         const errBody = typeof moduleResponse.body === 'string' ? JSON.parse(moduleResponse.body) : moduleResponse.body
-        res.status(moduleResponse.status).json(errBody)
+        res.status(moduleResponse.status || 500).json(errBody)
       }
     })
   }
 
-  app.listen(3000, () => {
-    console.log('server running @ http://localhost:3000')
-    console.log('session cookie:', sessionCookie ? '已加载' : '未登录')
+  app.listen(3000, '0.0.0.0', () => {
+    console.log('[FreedomMusic Server] 运行在: http://127.0.0.1:3000 和 http://0.0.0.0:3000')
+    console.log('[FreedomMusic Server] 伪装国内节点 IP:', global.cnIp)
+    console.log('[FreedomMusic Server] Session 状态:', sessionCookie ? '已加载登录 Cookie' : '未登录(已分配匿名Token)')
   })
 }
 
-start().catch(console.error)
+start().catch((err) => {
+  console.error('[Server Start Error]', err)
+})
+

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { FC } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faFire, faMusic, faPlay, faPause, faClock, faSearch, faXmark, faPlayCircle } from '@fortawesome/free-solid-svg-icons';
+import { faFire, faMusic, faPause, faClock, faSearch, faXmark, faPlayCircle } from '@fortawesome/free-solid-svg-icons';
 import { getToplist, getPlaylistTrackAll, getSongUrl } from '../../services/api';
 import { formatDuration } from '../../utils/format';
 import { usePlayer } from '../../context/PlayerContext';
