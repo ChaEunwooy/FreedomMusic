@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { Playlist, DailySong, Song, PlaylistSong } from './types';
 import { getRecommendPlaylists, getHotPlaylists, getPlaylistDetail, getDailyRecommend } from '../services/api';
@@ -196,9 +196,15 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [authState]);
 
-  const value = {
-    playlists, dailySongs, currentSong, setCurrentSong, loading, error, refreshPlaylists,
-  };
+  const value = useMemo(() => ({
+    playlists,
+    dailySongs,
+    currentSong,
+    setCurrentSong,
+    loading,
+    error,
+    refreshPlaylists,
+  }), [playlists, dailySongs, currentSong, setCurrentSong, loading, error, refreshPlaylists]);
 
   return (
     <DataContext.Provider value={value}>

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { User, AuthState } from './types';
 import { getUserAccount, getUserPlaylist, logout as neteaseLogout, checkLoginStatus, getLocalPlaylists } from '../services/api';
@@ -145,10 +145,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch {}
   }, [user]);
 
-  const value = {
-    user, authState, authError, subscribedPlaylists, createdPlaylists,
-    qrLogin, logout, fetchUserPlaylists, fetchLocalPlaylists,
-  };
+  const value = useMemo(() => ({
+    user,
+    authState,
+    authError,
+    subscribedPlaylists,
+    createdPlaylists,
+    qrLogin,
+    logout,
+    fetchUserPlaylists,
+    fetchLocalPlaylists,
+  }), [user, authState, authError, subscribedPlaylists, createdPlaylists, qrLogin, logout, fetchUserPlaylists, fetchLocalPlaylists]);
 
   return (
     <AuthContext.Provider value={value}>

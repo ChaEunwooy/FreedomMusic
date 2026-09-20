@@ -23,4 +23,24 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+              return 'vendor-react';
+            }
+            if (id.includes('@fortawesome')) {
+              return 'vendor-icons';
+            }
+            if (id.includes('axios')) {
+              return 'vendor-utils';
+            }
+          }
+        },
+      },
+    },
+  },
 })

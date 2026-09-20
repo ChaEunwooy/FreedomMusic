@@ -5,7 +5,7 @@ import { faEllipsis, faPlay, faForward, faHeart, faListOl } from '@fortawesome/f
 import { faHeart as faHeartReg } from '@fortawesome/free-regular-svg-icons';
 import { usePlayer } from '../context/PlayerContext';
 import { useI18n } from '../i18n';
-import { likeSong } from '../services/api';
+import { likeSong, getSongUrl } from '../services/api';
 import AddToPlaylistModal from '../features/playlist/AddToPlaylistModal';
 
 interface SongMenuProps {
@@ -50,7 +50,6 @@ const SongMenu: FC<SongMenuProps> = ({ song }) => {
   const handlePlay = useCallback(async () => {
     setOpen(false);
     try {
-      const { getSongUrl } = await import('../services/api');
       const res = await getSongUrl(song.id);
       const url = res.data.data?.[0]?.url;
       if (url) play({ ...song, url });

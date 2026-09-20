@@ -1,20 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import type { FC } from 'react';
 import Header from './Header';
 import Banner from '../features/discover/Banner';
 import RecommendSection from '../features/discover/RecommendSection';
 import DailyRandom from '../features/discover/DailyRandom';
-import LeaderboardPage from '../features/leaderboard/LeaderboardPage';
-import PlaylistsPage from '../features/playlist/PlaylistsPage';
-import PlaylistDetailView from '../features/playlist/PlaylistDetailView';
-import MusicLibrary from '../features/library/MusicLibrary';
-import SettingsPage from '../features/settings/SettingsPage';
-import SearchPage from '../features/search/SearchPage';
-import ArtistDetail from '../features/library/ArtistDetail';
-import AlbumDetail from '../features/library/AlbumDetail';
 import WeatherWidget from './WeatherWidget';
+import ErrorBoundary from './ErrorBoundary';
 import { useI18n } from '../i18n';
+
+// 路由代码分割（按需加载页面 chunk，降低首屏体积）
+const LeaderboardPage = lazy(() => import('../features/leaderboard/LeaderboardPage'));
+const PlaylistsPage = lazy(() => import('../features/playlist/PlaylistsPage'));
+const PlaylistDetailView = lazy(() => import('../features/playlist/PlaylistDetailView'));
+const MusicLibrary = lazy(() => import('../features/library/MusicLibrary'));
+const SettingsPage = lazy(() => import('../features/settings/SettingsPage'));
+const SearchPage = lazy(() => import('../features/search/SearchPage'));
+const ArtistDetail = lazy(() => import('../features/library/ArtistDetail'));
+const AlbumDetail = lazy(() => import('../features/library/AlbumDetail'));
+
+const RouteLoadingFallback: FC = () => (
+  <div className="flex-1 flex items-center justify-center min-h-[300px]">
+    <div className="flex flex-col items-center gap-3 text-white/40">
+      <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-[var(--theme-accent,#22d3ee)] animate-spin" />
+      <span className="text-xs font-medium tracking-wide">加载中...</span>
+    </div>
+  </div>
+);
 
 function getGreetingInfo() {
   const h = new Date().getHours();
@@ -60,19 +72,23 @@ interface MainContentProps {
 const MainContent: FC<MainContentProps> = ({ isCompact }) => {
   return (
     <main className={`flex-1 flex flex-col ${isCompact ? 'p-6 pb-16' : 'p-12 pb-20'} overflow-y-auto no-scrollbar`}>
-      <Routes>
-        <Route index element={<DiscoverPage />} />
-        <Route path="discover" element={<DiscoverPage />} />
-        <Route path="leaderboard" element={<LeaderboardPage />} />
-        <Route path="playlists" element={<PlaylistsPage />} />
-        <Route path="playlist/:id" element={<PlaylistDetailView />} />
-        <Route path="library" element={<MusicLibrary />} />
-        <Route path="library/:tab" element={<MusicLibrary />} />
-        <Route path="artist/:id" element={<ArtistDetail />} />
-        <Route path="album/:id" element={<AlbumDetail />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="search" element={<SearchPage />} />
-      </Routes>
+      <ErrorBoundary fallbackTitle="页面内容加载异常">
+        <Suspense fallback={<RouteLoadingFallback />}>
+          <Routes>
+            <Route index element={<DiscoverPage />} />
+            <Route path="discover" element={<DiscoverPage />} />
+            <Route path="leaderboard" element={<LeaderboardPage />} />
+            <Route path="playlists" element={<PlaylistsPage />} />
+            <Route path="playlist/:id" element={<PlaylistDetailView />} />
+            <Route path="library" element={<MusicLibrary />} />
+            <Route path="library/:tab" element={<MusicLibrary />} />
+            <Route path="artist/:id" element={<ArtistDetail />} />
+            <Route path="album/:id" element={<AlbumDetail />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="search" element={<SearchPage />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
     </main>
   );
 };

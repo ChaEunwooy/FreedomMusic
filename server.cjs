@@ -42,6 +42,17 @@ global.cnIp = getRandomChinaIP()
 const dataDir = path.join(os.homedir(), '.freedom-music')
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true })
 
+const cacheDir = path.join(dataDir, 'cache')
+if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true })
+
+const playlistsDir = path.join(dataDir, 'playlists')
+if (!fs.existsSync(playlistsDir)) fs.mkdirSync(playlistsDir, { recursive: true })
+
+function sanitizeKey(key) {
+  if (typeof key !== 'string') return ''
+  return key.replace(/[^a-zA-Z0-9_-]/g, '')
+}
+
 // 预创建系统临时目录下的 anonymous_token，防止 NCM 依赖加载时抛出 ENOENT 异常
 const tmpAnonToken = path.join(os.tmpdir(), 'anonymous_token')
 if (!fs.existsSync(tmpAnonToken)) {
@@ -381,29 +392,32 @@ async function start() {
   })
 
   app.post('/config/:key', (req, res) => {
+    const key = req.params.key
+    if (!key || ['__proto__', 'constructor', 'prototype'].includes(key)) {
+      return res.status(400).json({ code: 400, msg: '非法键名' })
+    }
     const config = readConfig()
-    config[req.params.key] = req.body.value
+    config[key] = req.body.value
     writeConfig(config)
     res.json({ code: 200 })
   })
 
   app.delete('/config/:key', (req, res) => {
+    const key = req.params.key
+    if (!key || ['__proto__', 'constructor', 'prototype'].includes(key)) {
+      return res.status(400).json({ code: 400, msg: '非法键名' })
+    }
     const config = readConfig()
-    delete config[req.params.key]
+    delete config[key]
     writeConfig(config)
     res.json({ code: 200 })
   })
 
-  // ── 10.1 每日缓存管理（本地硬盘存储）──
-  const cacheDir = path.join(dataDir, 'cache')
-  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true })
-
-  // ── 10.2 本地歌单管理（硬盘存储，支持增删改查）──
-  const playlistsDir = path.join(dataDir, 'playlists')
-  if (!fs.existsSync(playlistsDir)) fs.mkdirSync(playlistsDir, { recursive: true })
-
+  // ── 10.1 每日缓存与本地歌单管理（本地硬盘存储）──
   function getLocalPlaylists(uid) {
-    const filePath = path.join(playlistsDir, `${uid}.json`)
+    const safeUid = sanitizeKey(String(uid))
+    if (!safeUid) return { subscribed: [], created: [] }
+    const filePath = path.join(playlistsDir, `${safeUid}.json`)
     try {
       if (fs.existsSync(filePath)) return JSON.parse(fs.readFileSync(filePath, 'utf-8'))
     } catch {}
@@ -411,7 +425,9 @@ async function start() {
   }
 
   function saveLocalPlaylists(uid, data) {
-    const filePath = path.join(playlistsDir, `${uid}.json`)
+    const safeUid = sanitizeKey(String(uid))
+    if (!safeUid) return
+    const filePath = path.join(playlistsDir, `${safeUid}.json`)
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8')
   }
 
@@ -580,7 +596,9 @@ async function start() {
   }
 
   app.get('/cache/:key', (req, res) => {
-    const filePath = path.join(cacheDir, `${todayKey()}_${req.params.key}.json`)
+    const safeKey = sanitizeKey(req.params.key)
+    if (!safeKey) return res.json({ code: 200, data: null })
+    const filePath = path.join(cacheDir, `${todayKey()}_${safeKey}.json`)
     try {
       if (fs.existsSync(filePath)) {
         const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
@@ -594,8 +612,10 @@ async function start() {
   })
 
   app.post('/cache/:key', (req, res) => {
+    const safeKey = sanitizeKey(req.params.key)
+    if (!safeKey) return res.status(400).json({ code: 400, msg: '非法 key' })
     cleanOldCache()
-    const filePath = path.join(cacheDir, `${todayKey()}_${req.params.key}.json`)
+    const filePath = path.join(cacheDir, `${todayKey()}_${safeKey}.json`)
     try {
       fs.writeFileSync(filePath, JSON.stringify(req.body.data), 'utf-8')
       res.json({ code: 200 })

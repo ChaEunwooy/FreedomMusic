@@ -36,11 +36,11 @@ const Equalizer: FC<EqualizerProps> = ({ onChange }) => {
     setValues((prev) => {
       const next = [...prev];
       next[index] = value;
+      onChange?.(next);
       return next;
     });
     setPreset('custom');
-    onChange?.(values);
-  }, [values, onChange]);
+  }, [onChange]);
 
   return (
     <div className="relative">

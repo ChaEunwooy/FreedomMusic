@@ -71,11 +71,15 @@ const Banner: FC = () => {
   }, [selectedMood, followTheme]);
 
   useEffect(() => {
+    // 仅预加载当天 3 种心情所对应的壁纸（3张），避免21张大图同时争抢首屏网络带宽
+    const dayOfWeek = new Date().getDay();
+    const dayIdx = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     MOODS.forEach((mood) => {
-      MOOD_CONFIGS[mood].bgImages.forEach((url) => {
+      const url = MOOD_CONFIGS[mood].bgImages[dayIdx] || MOOD_CONFIGS[mood].bgImage;
+      if (url) {
         const img = new Image();
         img.src = url;
-      });
+      }
     });
     Promise.all(
       MOODS.map(async (mood) => {
