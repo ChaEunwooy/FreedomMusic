@@ -13,21 +13,20 @@ process.on('unhandledRejection', (reason) => {
   console.error('[Process Rejection]', reason)
 })
 
-// 中国大陆真实高可用 IP 池生成器（确保在开启任何梯子或海外网络下均可顺畅访问网易云）
-function getRandomChinaIP() {
-  const chinaIPRanges = [
-    ['116.25.0.0', '116.25.255.255'],    // 广东电信
-    ['183.14.0.0', '183.14.255.255'],    // 广东电信
-    ['223.73.0.0', '223.73.255.255'],    // 广东移动
-    ['114.80.0.0', '114.95.255.255'],    // 上海电信
-    ['120.204.0.0', '120.204.255.255'],  // 上海移动
-    ['123.112.0.0', '123.127.255.255'],  // 北京联通
-    ['218.240.0.0', '218.241.255.255'],  // 北京联通
-    ['117.136.0.0', '117.136.255.255'],  // 浙江移动
-    ['122.224.0.0', '122.228.255.255'],  // 浙江电信
-    ['218.88.0.0', '218.90.255.255'],    // 四川电信
-  ]
-  const range = chinaIPRanges[Math.floor(Math.random() * chinaIPRanges.length)]
+// 中国大陆真实高可用 IP 池生成器（会话粘性：保持同城市/运营商，避免高频跨省漂移触发网易云反作弊风控）
+const CHINA_REGIONS = [
+  { name: '广东电信', ranges: [['116.25.0.0', '116.25.255.255'], ['183.14.0.0', '183.14.255.255']] },
+  { name: '广东移动', ranges: [['223.73.0.0', '223.73.255.255']] },
+  { name: '上海电信', ranges: [['114.80.0.0', '114.95.255.255']] },
+  { name: '上海移动', ranges: [['120.204.0.0', '120.204.255.255']] },
+  { name: '北京联通', ranges: [['123.112.0.0', '123.127.255.255'], ['218.240.0.0', '218.241.255.255']] },
+  { name: '浙江电信', ranges: [['122.224.0.0', '122.228.255.255']] },
+  { name: '四川电信', ranges: [['218.88.0.0', '218.90.255.255']] },
+]
+// 启动时选定一个基准地域，生命周期内保持稳定粘性
+let currentRegion = CHINA_REGIONS[Math.floor(Math.random() * CHINA_REGIONS.length)]
+
+function generateIPFromRange(range) {
   const start = range[0].split('.').map(Number)
   const end = range[1].split('.').map(Number)
   return [
@@ -37,7 +36,15 @@ function getRandomChinaIP() {
     Math.floor(Math.random() * (end[3] - start[3] + 1)) + start[3],
   ].join('.')
 }
-global.cnIp = getRandomChinaIP()
+
+function getRandomChinaIP(forceRotate = false) {
+  if (global.cnIp && !forceRotate) return global.cnIp
+  const range = currentRegion.ranges[Math.floor(Math.random() * currentRegion.ranges.length)]
+  const ip = generateIPFromRange(range)
+  global.cnIp = ip
+  return ip
+}
+global.cnIp = getRandomChinaIP(true)
 
 const dataDir = path.join(os.homedir(), '.freedom-music')
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true })
@@ -278,21 +285,8 @@ setInterval(() => {
   for (const [key, val] of responseCache) {
     if (now - val.ts > 30 * 60 * 1000) responseCache.delete(key)
   }
-  // 清理磁盘缓存（7天过期）
-  try {
-    const files = fs.readdirSync(cacheDir)
-    for (const f of files) {
-      if (!f.endsWith('.json')) continue
-      const datePart = f.split('_')[0]
-      if (!datePart || datePart.length !== 10) continue
-      const fileDate = new Date(datePart).getTime()
-      if (isNaN(fileDate)) continue
-      if (now - fileDate > 7 * MS_PER_DAY) {
-        fs.unlinkSync(path.join(cacheDir, f))
-        console.log('[Cache] 定时清理过期缓存:', f)
-      }
-    }
-  } catch {}
+  // 清理磁盘缓存（7天自然过期 + 500MB 硬上限 LRU 淘汰）
+  cleanOldCache()
 }, 10 * 60 * 1000)
 
 // ── 6. 启动服务器 ──
@@ -575,24 +569,52 @@ async function start() {
     return new Date().toISOString().slice(0, 10)
   }
 
+  const MAX_CACHE_BYTES = (parseInt(process.env.CACHE_MAX_MB, 10) || 500) * 1024 * 1024 // 默认配额上限 500MB
+  const TARGET_CACHE_BYTES = Math.floor(MAX_CACHE_BYTES * 0.75) // 超额后清理至 75%
+
   function cleanOldCache() {
     const now = Date.now()
     const MS_PER_DAY = 86400000
     try {
+      if (!fs.existsSync(cacheDir)) return
       const files = fs.readdirSync(cacheDir)
+      const fileStats = []
+      let totalBytes = 0
+
       for (const f of files) {
         if (!f.endsWith('.json')) continue
-        // 文件名格式: YYYY-MM-DD_key.json
-        const datePart = f.split('_')[0]
-        if (!datePart || datePart.length !== 10) continue
-        const fileDate = new Date(datePart).getTime()
-        if (isNaN(fileDate)) continue
-        if (now - fileDate > 7 * MS_PER_DAY) {
-          fs.unlinkSync(path.join(cacheDir, f))
-          console.log('[Cache] 删除过期缓存:', f)
-        }
+        const fullPath = path.join(cacheDir, f)
+        try {
+          const stat = fs.statSync(fullPath)
+          const datePart = f.split('_')[0]
+          const fileDate = (datePart && datePart.length === 10) ? new Date(datePart).getTime() : NaN
+
+          // 1. 超过7天自然过期直接删除
+          if (!isNaN(fileDate) && now - fileDate > 7 * MS_PER_DAY) {
+            fs.unlinkSync(fullPath)
+            continue
+          }
+
+          totalBytes += stat.size
+          fileStats.push({ path: fullPath, size: stat.size, mtime: stat.mtimeMs })
+        } catch {}
       }
-    } catch {}
+
+      // 2. 容量硬配额 LRU 淘汰：若总容量超限，按最旧 mtime 淘汰至 TARGET_CACHE_BYTES
+      if (totalBytes > MAX_CACHE_BYTES) {
+        fileStats.sort((a, b) => a.mtime - b.mtime)
+        for (const item of fileStats) {
+          if (totalBytes <= TARGET_CACHE_BYTES) break
+          try {
+            fs.unlinkSync(item.path)
+            totalBytes -= item.size
+          } catch {}
+        }
+        console.log(`[Cache] 触发容量配额淘汰，当前磁盘缓存已降至 ${(totalBytes / 1024 / 1024).toFixed(2)} MB`)
+      }
+    } catch (err) {
+      console.error('[Cache] 清理磁盘缓存异常:', err.message)
+    }
   }
 
   app.get('/cache/:key', (req, res) => {
@@ -617,7 +639,14 @@ async function start() {
     cleanOldCache()
     const filePath = path.join(cacheDir, `${todayKey()}_${safeKey}.json`)
     try {
-      fs.writeFileSync(filePath, JSON.stringify(req.body.data), 'utf-8')
+      const tmpPath = `${filePath}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}.tmp`
+      fs.writeFileSync(tmpPath, JSON.stringify(req.body.data), 'utf-8')
+      try {
+        fs.renameSync(tmpPath, filePath)
+      } catch {
+        fs.copyFileSync(tmpPath, filePath)
+        try { fs.unlinkSync(tmpPath) } catch {}
+      }
       res.json({ code: 200 })
     } catch (e) {
       res.status(500).json({ code: 500, msg: e.message })
