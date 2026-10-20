@@ -1,0 +1,402 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "https://excalidraw.com",
+  "elements": [
+    {
+      "type": "rectangle",
+      "id": "ent-user",
+      "x": 80,
+      "y": 100,
+      "width": 220,
+      "height": 160,
+      "backgroundColor": "#eff6ff",
+      "strokeColor": "#2563eb",
+      "strokeWidth": 2,
+      "fillStyle": "solid"
+    },
+    {
+      "type": "text",
+      "id": "txt-user-h",
+      "x": 130,
+      "y": 110,
+      "text": "用户 (USER)",
+      "fontSize": 16,
+      "fontFamily": 1,
+      "strokeColor": "#1e40af"
+    },
+    {
+      "type": "line",
+      "id": "sep-user",
+      "x": 80,
+      "y": 140,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          220,
+          0
+        ]
+      ],
+      "strokeColor": "#2563eb",
+      "strokeWidth": 1
+    },
+    {
+      "type": "text",
+      "id": "txt-user-b",
+      "x": 90,
+      "y": 150,
+      "text": "• userId: string [PK]\n• nickname: string\n• avatarUrl: string\n• neteaseCookie: string\n• authState: string",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#334155"
+    },
+    {
+      "type": "rectangle",
+      "id": "ent-pl",
+      "x": 440,
+      "y": 100,
+      "width": 230,
+      "height": 160,
+      "backgroundColor": "#ecfdf5",
+      "strokeColor": "#059669",
+      "strokeWidth": 2,
+      "fillStyle": "solid"
+    },
+    {
+      "type": "text",
+      "id": "txt-pl-h",
+      "x": 490,
+      "y": 110,
+      "text": "歌单 (PLAYLIST)",
+      "fontSize": 16,
+      "fontFamily": 1,
+      "strokeColor": "#065f46"
+    },
+    {
+      "type": "line",
+      "id": "sep-pl",
+      "x": 440,
+      "y": 140,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          230,
+          0
+        ]
+      ],
+      "strokeColor": "#059669",
+      "strokeWidth": 1
+    },
+    {
+      "type": "text",
+      "id": "txt-pl-b",
+      "x": 450,
+      "y": 150,
+      "text": "• playlistId: int [PK]\n• name: string\n• coverImgUrl: string\n• trackCount: int\n• isSubscribed: bool",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#334155"
+    },
+    {
+      "type": "rectangle",
+      "id": "ent-song",
+      "x": 440,
+      "y": 360,
+      "width": 230,
+      "height": 190,
+      "backgroundColor": "#fdf2f8",
+      "strokeColor": "#db2777",
+      "strokeWidth": 2,
+      "fillStyle": "solid"
+    },
+    {
+      "type": "text",
+      "id": "txt-song-h",
+      "x": 490,
+      "y": 370,
+      "text": "歌曲 (SONG)",
+      "fontSize": 16,
+      "fontFamily": 1,
+      "strokeColor": "#9d174d"
+    },
+    {
+      "type": "line",
+      "id": "sep-song",
+      "x": 440,
+      "y": 400,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          230,
+          0
+        ]
+      ],
+      "strokeColor": "#db2777",
+      "strokeWidth": 1
+    },
+    {
+      "type": "text",
+      "id": "txt-song-b",
+      "x": 450,
+      "y": 410,
+      "text": "• songId: int [PK]\n• name: string\n• artists: string\n• album: string\n• audioUrl: string\n• duration: int\n• lrcContent: text",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#334155"
+    },
+    {
+      "type": "rectangle",
+      "id": "ent-mood",
+      "x": 780,
+      "y": 360,
+      "width": 230,
+      "height": 160,
+      "backgroundColor": "#fffbeb",
+      "strokeColor": "#d97706",
+      "strokeWidth": 2,
+      "fillStyle": "solid"
+    },
+    {
+      "type": "text",
+      "id": "txt-mood-h",
+      "x": 810,
+      "y": 370,
+      "text": "心境主题 (MOOD_THEME)",
+      "fontSize": 16,
+      "fontFamily": 1,
+      "strokeColor": "#7c2d12"
+    },
+    {
+      "type": "line",
+      "id": "sep-mood",
+      "x": 780,
+      "y": 400,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          230,
+          0
+        ]
+      ],
+      "strokeColor": "#d97706",
+      "strokeWidth": 1
+    },
+    {
+      "type": "text",
+      "id": "txt-mood-b",
+      "x": 790,
+      "y": 410,
+      "text": "• moodType: string [PK]\n• themeColor: string\n• particleType: string\n• recommendTags: string",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#334155"
+    },
+    {
+      "type": "rectangle",
+      "id": "ent-hist",
+      "x": 80,
+      "y": 360,
+      "width": 220,
+      "height": 160,
+      "backgroundColor": "#f5f3ff",
+      "strokeColor": "#7c3aed",
+      "strokeWidth": 2,
+      "fillStyle": "solid"
+    },
+    {
+      "type": "text",
+      "id": "txt-hist-h",
+      "x": 100,
+      "y": 370,
+      "text": "播放记录 (PLAY_HISTORY)",
+      "fontSize": 16,
+      "fontFamily": 1,
+      "strokeColor": "#4c1d95"
+    },
+    {
+      "type": "line",
+      "id": "sep-hist",
+      "x": 80,
+      "y": 400,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          220,
+          0
+        ]
+      ],
+      "strokeColor": "#7c3aed",
+      "strokeWidth": 1
+    },
+    {
+      "type": "text",
+      "id": "txt-hist-b",
+      "x": 90,
+      "y": 410,
+      "text": "• recordId: int [PK]\n• userId: string [FK]\n• songId: int [FK]\n• playTimestamp: timestamp\n• queueIndex: int",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#334155"
+    },
+    {
+      "type": "arrow",
+      "id": "arr-u-pl",
+      "x": 300,
+      "y": 180,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          140,
+          0
+        ]
+      ],
+      "strokeColor": "#475569",
+      "strokeWidth": 2
+    },
+    {
+      "type": "text",
+      "id": "lbl-u-pl",
+      "x": 335,
+      "y": 155,
+      "text": "创建/同步 (1:N)",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#0f766e"
+    },
+    {
+      "type": "arrow",
+      "id": "arr-pl-song",
+      "x": 555,
+      "y": 260,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          100
+        ]
+      ],
+      "strokeColor": "#475569",
+      "strokeWidth": 2
+    },
+    {
+      "type": "text",
+      "id": "lbl-pl-song",
+      "x": 565,
+      "y": 300,
+      "text": "收录 (M:N)",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#0f766e"
+    },
+    {
+      "type": "arrow",
+      "id": "arr-u-hist",
+      "x": 190,
+      "y": 260,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          100
+        ]
+      ],
+      "strokeColor": "#475569",
+      "strokeWidth": 2
+    },
+    {
+      "type": "text",
+      "id": "lbl-u-hist",
+      "x": 200,
+      "y": 300,
+      "text": "产生 (1:N)",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#0f766e"
+    },
+    {
+      "type": "arrow",
+      "id": "arr-hist-song",
+      "x": 300,
+      "y": 440,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          140,
+          0
+        ]
+      ],
+      "strokeColor": "#475569",
+      "strokeWidth": 2
+    },
+    {
+      "type": "text",
+      "id": "lbl-hist-song",
+      "x": 335,
+      "y": 415,
+      "text": "对应 (N:1)",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#0f766e"
+    },
+    {
+      "type": "arrow",
+      "id": "arr-song-mood",
+      "x": 670,
+      "y": 440,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          110,
+          0
+        ]
+      ],
+      "strokeColor": "#475569",
+      "strokeWidth": 2
+    },
+    {
+      "type": "text",
+      "id": "lbl-song-mood",
+      "x": 690,
+      "y": 415,
+      "text": "关联 (M:N)",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#0f766e"
+    }
+  ],
+  "appState": {
+    "viewBackgroundColor": "#ffffff",
+    "gridSize": null
+  },
+  "files": {}
+}
